@@ -3567,11 +3567,18 @@ function load() {
       const res = await fetch(FB_SECRETS, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Could not fetch config');
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('getClaudeKey Firestore error:', err);
+        return null;
+      }
       const doc = await res.json();
+      console.log('Firestore secrets doc fields:', Object.keys(doc.fields || {}));
       _claudeKey = doc.fields?.claudeKey?.stringValue || null;
+      if (!_claudeKey) console.error('claudeKey field missing or empty in config/secrets');
       return _claudeKey;
     } catch(e) {
+      console.error('getClaudeKey exception:', e);
       return null;
     }
   };
@@ -8524,11 +8531,15 @@ async function sendChat(){
       })
     });
     const data=await res.json();
+    if (!res.ok) {
+      aiBubble.querySelector('.msg-bubble').textContent=`Oracle error ${res.status}: ${data.error?.message || JSON.stringify(data)}`;
+      send.disabled=false; msgs.scrollTop=msgs.scrollHeight; return;
+    }
     const text=(data.content&&data.content[0])?data.content[0].text:'The Oracle is silent…';
     aiBubble.querySelector('.msg-bubble').innerHTML=text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:3px;font-family:var(--font-mono)">$1</code>');
     S.oracleHistory.push({role:'assistant',content:text});
   } catch(e) {
-    aiBubble.querySelector('.msg-bubble').textContent='Connection failed. Check your network.';
+    aiBubble.querySelector('.msg-bubble').textContent=`Connection failed: ${e.message}`;
   }
 
   send.disabled=false; msgs.scrollTop=msgs.scrollHeight;
