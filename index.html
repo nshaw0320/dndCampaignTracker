@@ -3475,9 +3475,14 @@ let S = {
 
 function save() {
   try {
-    const data = JSON.stringify({...S, _mapAnnotations});
-    localStorage.setItem('codex_v3', data);
+    const data = {...S, _mapAnnotations, _savedAt: new Date().toISOString(), _savedBy: localStorage.getItem('codex_fb_device') || 'CODEX'};
+    localStorage.setItem('codex_v3', JSON.stringify(data));
   } catch(e){}
+  // Debounced auto-sync to Firebase (2s after last change)
+  clearTimeout(save._fbTimer);
+  save._fbTimer = setTimeout(() => {
+    if (typeof fbSilentPush === 'function') fbSilentPush();
+  }, 2000);
 }
 function load() {
   try {
@@ -3681,6 +3686,56 @@ function load() {
     if (el && saved) el.value = saved;
     document.getElementById('fb-log').textContent = '';
     fbSetStatus(false, 'Ready');
+  };
+
+  // ── Silent auto-push (called by save() debounce) ──
+  window.fbSilentPush = async function() {
+    try {
+      const token = await getToken();
+      const rawData = localStorage.getItem('codex_v3') || '{}';
+      const payload = JSON.parse(rawData);
+      const deviceId = localStorage.getItem('codex_fb_device') || 'CODEX';
+      payload._savedAt = new Date().toISOString();
+      payload._savedBy = deviceId;
+      await fetch(FB_DOC + '?updateMask.fieldPaths=data', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(toFirestore(payload))
+      });
+      fbSetStatus(true, `Auto-saved · ${deviceId}`);
+    } catch(e) { /* silent — don't bother user on background saves */ }
+  };
+
+  // ── Auto-load on startup and periodic poll ──
+  // Pulls from Firebase if cloud save is newer AND was saved by a different device
+  window.fbAutoLoad = async function() {
+    try {
+      const token = await getToken();
+      const res = await fetch(FB_DOC, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (!res.ok) return;
+      const doc = await res.json();
+      const data = fromFirestore(doc);
+
+      const cloudTime  = data._savedAt ? new Date(data._savedAt).getTime() : 0;
+      const cloudBy    = data._savedBy || '';
+      const local      = localStorage.getItem('codex_v3');
+      const localParsed = local ? JSON.parse(local) : {};
+      const localTime  = localParsed._savedAt ? new Date(localParsed._savedAt).getTime() : 0;
+      const myDevice   = localStorage.getItem('codex_fb_device') || 'CODEX';
+
+      // Only pull if cloud is newer and it wasn't us who saved it
+      if (cloudTime > localTime && cloudBy !== myDevice) {
+        delete data._savedAt; delete data._savedBy;
+        localStorage.setItem('codex_v3', JSON.stringify(data));
+        if (data._mapAnnotations) { _mapAnnotations = data._mapAnnotations; delete data._mapAnnotations; }
+        S = {...S, ...data};
+        renderTopbar(); renderCharacter(); renderSpells(); renderInventory(); renderParty(); renderNotes();
+        fbSetStatus(true, `Synced from ${cloudBy || 'another device'}`);
+        toast(`☁️ Updated from ${cloudBy || 'another device'}`, 'green');
+      } else if (cloudTime > 0) {
+        fbSetStatus(true, `Saved · ${myDevice}`);
+      }
+    } catch(e) { /* silent */ }
   };
 })();
 
@@ -10589,6 +10644,10 @@ document.addEventListener('touchmove', e=>{
     document.getElementById('pin-screen').style.display = 'none';
     document.getElementById('app').style.display = '';
     initApp();
+    // Pull cloud save on startup (after local data already loaded)
+    setTimeout(() => { if (typeof fbAutoLoad === 'function') fbAutoLoad(); }, 1200);
+    // Poll every 30s — silently pull if another device saved something newer
+    setInterval(() => { if (typeof fbAutoLoad === 'function') fbAutoLoad(); }, 30000);
   }
 
   async function submitPin() {
