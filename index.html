@@ -6783,9 +6783,10 @@ function renderItemLibrary(){
     return;
   }
   const rarityColor={common:'var(--text3)',uncommon:'var(--green)',rare:'var(--blue)',very_rare:'var(--purple)',legendary:'var(--orange)',artifact:'var(--red)',varies:'var(--cyan)'};
-  el.innerHTML=items.map((item,i)=>{
+  el.innerHTML=items.map((item)=>{
     const isSelected=selectedLibItem&&selectedLibItem.name===item.name;
-    return `<div onclick="selectLibItem(${i})"
+    const nameKey=encodeURIComponent(item.name);
+    return `<div onclick="selectLibItem('${nameKey}')"
       style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:${isSelected?'rgba(245,200,66,0.1)':'var(--surface)'};border:1.5px solid ${isSelected?'var(--gold)':'var(--border)'};border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition);">
       <div style="width:32px;flex-shrink:0;text-align:center;font-size:22px;line-height:1.3;padding-top:1px;">${item.icon||'📦'}</div>
       <div style="flex:1;min-width:0;">
@@ -6802,17 +6803,18 @@ function renderItemLibrary(){
   }).join('');
 }
 
-function selectLibItem(idx){
+function selectLibItem(nameKey){
+  const name=decodeURIComponent(nameKey);
   const items=PHB_ITEMS[currentItemType]||[];
-  const sorted=[...items].sort((a,b)=>a.name.localeCompare(b.name));
-  selectedLibItem=sorted[idx];
-  if(!selectedLibItem) return;
-  document.getElementById('ai-name').value=selectedLibItem.name;
-  document.getElementById('ai-desc').value=selectedLibItem.desc||'';
-  document.getElementById('ai-weight').value=selectedLibItem.weight||0;
-  document.getElementById('ai-cost').value=selectedLibItem.cost||0;
-  document.getElementById('ai-icon').value=selectedLibItem.icon||'📦';
-  document.getElementById('ai-rarity').value=selectedLibItem.rarity||'common';
+  const item=items.find(i=>i.name===name);
+  if(!item) return;
+  selectedLibItem=item;
+  document.getElementById('ai-name').value=item.name;
+  document.getElementById('ai-desc').value=item.desc||'';
+  document.getElementById('ai-weight').value=item.weight||0;
+  document.getElementById('ai-cost').value=item.cost||0;
+  document.getElementById('ai-icon').value=item.icon||'📦';
+  document.getElementById('ai-rarity').value=item.rarity||'common';
   document.getElementById('ai-qty').value=1;
 
   // Show the fields section
@@ -6821,7 +6823,7 @@ function selectLibItem(idx){
 
   // Update preview with currency deduction info
   const preview=document.getElementById('ai-selected-preview');
-  if(preview) preview.innerHTML=buildItemCostPreview(selectedLibItem);
+  if(preview) preview.innerHTML=buildItemCostPreview(item);
   renderItemLibrary();
 }
 
