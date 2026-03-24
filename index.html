@@ -8818,6 +8818,54 @@ function getWeaponDice(w){
   return match?match[1]:'1d6';
 }
 
+// ── Ammo deduction ────────────────────────────────────────────────────────
+// Maps weapon name patterns → ammo item name keywords to search inventory for
+function getAmmoType(weapon) {
+  const name = (weapon.name || '').toLowerCase();
+  const desc = (weapon.desc || '').toLowerCase();
+  // Only deduct if weapon has Ammunition property
+  if (!desc.includes('ammunition')) return null;
+  if (name.includes('crossbow') || desc.includes('bolt'))  return { keyword: 'bolt',   label: 'Crossbow Bolt' };
+  if (name.includes('blowgun') || desc.includes('needle')) return { keyword: 'needle', label: 'Blowgun Needle' };
+  if (name.includes('sling')   || desc.includes('bullet')) return { keyword: 'bullet', label: 'Sling Bullet'   };
+  // Default: bow → arrows
+  return { keyword: 'arrow', label: 'Arrow' };
+}
+
+function deductAmmo(weapon) {
+  const c = getC(); if (!c) return;
+  const ammoType = getAmmoType(weapon);
+  if (!ammoType) return; // melee or thrown — no ammo
+
+  // Find best matching ammo stack in inventory (prefer exact single, then pack)
+  const items = c.items || [];
+  // Try to find a single-unit ammo item first (e.g. "Arrow"), then a bundle (e.g. "Arrows (20)")
+  let ammoItem = items.find(i =>
+    i.name.toLowerCase().includes(ammoType.keyword) &&
+    !i.name.toLowerCase().includes('(') &&  // prefer singles
+    (i.qty || 1) > 0
+  ) || items.find(i =>
+    i.name.toLowerCase().includes(ammoType.keyword) &&
+    (i.qty || 1) > 0
+  );
+
+  if (!ammoItem) {
+    toast(`⚠ No ${ammoType.label} in inventory!`, 'red');
+    return;
+  }
+
+  ammoItem.qty = (ammoItem.qty || 1) - 1;
+  if (ammoItem.qty <= 0) {
+    // Remove if depleted
+    c.items = c.items.filter(i => i !== ammoItem);
+    toast(`Last ${ammoType.label} used — none remaining!`, 'red');
+  } else {
+    toast(`🏹 ${ammoType.label} used · ${ammoItem.qty} left`, 'gold');
+  }
+  save();
+  renderInventory();
+}
+
 function quickRollAttack(weaponName, _ignored){
   const c=getC(); if(!c) return;
   // Find the weapon item
@@ -8832,6 +8880,8 @@ function quickRollAttack(weaponName, _ignored){
   showFlash(total,`${weaponName} Attack`,desc,isCrit?'✦ CRITICAL HIT!':isFumble?'💀 MISS!':'',isCrit?'crit-flash':isFumble?'fumble-flash':'');
   addDiceHistoryEntry(`${weaponName} ATK → ${total} (${desc})`);
   if(isCrit) toast('✦ CRITICAL HIT! Double the damage dice!','gold');
+  // Deduct ammo if this is an ammunition weapon
+  deductAmmo(weapon);
 }
 
 function quickRollDamage(weaponName, diceStr){
