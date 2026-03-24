@@ -4923,12 +4923,60 @@ function renderCharacter(){
   <div style="font-family:var(--font-display);font-weight:700;color:var(--text3);letter-spacing:0.5px;margin-bottom:10px;">Conditions</div>
   <div id="chr-conditionChips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;"></div>
   <div id="chr-conditionDetails"></div>
+
+  <!-- COLLAPSIBLE CHARACTER DETAILS -->
+  <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+
+    ${[
+      { key:'personality', label:'Personality Traits', placeholder:'How does your character behave and interact with others?', icon:'🎭' },
+      { key:'ideals',      label:'Ideals',             placeholder:'What principles and beliefs guide your character?',     icon:'✨' },
+      { key:'bonds',       label:'Bonds',              placeholder:'What ties your character to the world?',                icon:'🔗' },
+      { key:'flaws',       label:'Flaws',              placeholder:'What weaknesses or vices does your character have?',    icon:'💔' },
+      { key:'proficiencies', label:'Proficiencies',    placeholder:'Armor, weapons, tools your character is proficient with...', icon:'⚔' },
+      { key:'languages',   label:'Languages',          placeholder:'e.g. Common, Elvish, Dwarvish...',                     icon:'📜' },
+    ].map(({key, label, placeholder, icon}) => {
+      const val = key === 'proficiencies' ? (c.proficiencies || c.otherProf || '') : (c[key] || '');
+      const hasVal = val.trim().length > 0;
+      const dot = hasVal ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;"></span>' : '';
+      return '<div class="chr-collapse-section" style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">'
+        + '<button onclick="toggleChrSection(\''+key+'\')" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border:none;cursor:pointer;text-align:left;">'
+        + '<span style="font-size:16px;">'+icon+'</span>'
+        + '<span style="font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--text2);letter-spacing:0.5px;flex:1;">'+label.toUpperCase()+'</span>'
+        + dot
+        + '<span id="chr-chevron-'+key+'" style="color:var(--text3);font-size:12px;transition:transform 0.2s;">▼</span>'
+        + '</button>'
+        + '<div id="chr-section-'+key+'" style="display:none;padding:12px 14px;border-top:1px solid var(--border);">'
+        + '<textarea class="textarea" placeholder="'+placeholder+'" style="min-height:72px;font-size:13px;line-height:1.5;resize:vertical;" onchange="saveChrField(\''+key+'\',this.value)" oninput="saveChrField(\''+key+'\',this.value)">'+esc(val)+'</textarea>'
+        + '</div>'
+        + '</div>';
+    }).join('')}
+
+  </div>
   `;
+
 
 
   renderConditions();
   renderDeathSaves();
   renderConcentrationBanner();
+}
+
+function toggleChrSection(key) {
+  const section = document.getElementById('chr-section-' + key);
+  const chevron = document.getElementById('chr-chevron-' + key);
+  if (!section) return;
+  const isOpen = section.style.display !== 'none';
+  section.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+function saveChrField(key, value) {
+  const c = getC(); if (!c) return;
+  c[key] = value;
+  // Keep otherProf in sync with proficiencies
+  if (key === 'proficiencies') c.otherProf = value;
+  if (key === 'otherProf') c.proficiencies = value;
+  save();
 }
 
 function getHitDie(cls){
