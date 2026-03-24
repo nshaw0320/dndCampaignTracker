@@ -7125,15 +7125,21 @@ function renderInventory(){
           ${group.map(({item,i})=>{
             const isEquipped=item.equipped;
             const isWeapon=cat.key==='weapon';
+            const qty=item.qty||1;
             return `<div style="display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:10px;padding:12px 14px;background:${isEquipped?'rgba(245,200,66,0.06)':'var(--surface)'};border:1.5px solid ${isEquipped?'rgba(245,200,66,0.3)':'var(--border)'};border-radius:var(--radius-sm);transition:all var(--transition);">
               <span style="font-size:22px;text-align:center;">${item.icon||'📦'}</span>
               <div>
                 <div style="font-size:16px;font-weight:${isEquipped?'700':'500'};color:${isEquipped?'var(--text)':'var(--text2)'};">
-                  ${esc(item.name)}${item.qty>1?` <span style="font-size:13px;color:var(--text3);">×${item.qty}</span>`:''}
+                  ${esc(item.name)}
                   ${item.rarity&&item.rarity!=='common'?`<span style="font-size:11px;color:${rarityColor[item.rarity]||'var(--text3)'};font-family:var(--font-display);font-weight:700;margin-left:5px;">${item.rarity.replace('_',' ')}</span>`:''}
                 </div>
                 ${item.desc?`<div style="font-size:13px;color:var(--text3);margin-top:2px;line-height:1.4;">${esc(item.desc)}</div>`:''}
-                <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;">
+                <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:0;border:1.5px solid var(--border2);border-radius:6px;overflow:hidden;">
+                    <button onclick="adjustItemQty(${i},-1)" style="width:26px;height:26px;border:none;background:var(--surface2);color:var(--text2);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">−</button>
+                    <span style="min-width:28px;text-align:center;font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text);padding:0 4px;">${qty}</span>
+                    <button onclick="adjustItemQty(${i},1)" style="width:26px;height:26px;border:none;background:var(--surface2);color:var(--text2);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">+</button>
+                  </div>
                   ${item.weight?`<span style="font-size:12px;color:var(--text3);">⚖ ${item.weight} lb</span>`:''}
                   ${item.cost?`<span style="font-size:12px;color:var(--gold);">💰 ${item.cost} gp</span>`:''}
                 </div>
@@ -7202,6 +7208,13 @@ function addItem(){
 
 function removeItem(i){ const c=getC(); if(!c) return; c.items.splice(i,1); save(); renderInventory(); }
 function toggleEquip(i){ const c=getC(); if(!c) return; c.items[i].equipped=!c.items[i].equipped; save(); renderInventory(); }
+function adjustItemQty(i, delta){
+  const c=getC(); if(!c) return;
+  const item=c.items[i]; if(!item) return;
+  const newQty=Math.max(1, (item.qty||1)+delta);
+  item.qty=newQty;
+  save(); renderInventory();
+}
 
 // ═══════════════════════════════════════════════════════
 //  CURRENCY
