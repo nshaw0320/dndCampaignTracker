@@ -2733,9 +2733,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
       <!-- Icon picker for custom items -->
       <div style="margin-bottom:8px;">
         <label style="font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--text3);">ICON / CATEGORY</label>
-        <div id="ai-icon-picker" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-          ${['⚔','🗡','🪓','🏹','🛡','🧪','🎒','🔧','💎','🔮','💰','📦'].map(ic=>`<button onclick="document.getElementById('ai-icon').value='${ic}';document.querySelectorAll('#ai-icon-picker button').forEach(b=>b.style.background='var(--surface)');this.style.background='var(--gold-dim)';" style="width:38px;height:38px;font-size:20px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);cursor:pointer;transition:all var(--transition);">${ic}</button>`).join('')}
-        </div>
+        <div id="ai-icon-picker" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"></div>
       </div>
     </div>
 
@@ -3724,6 +3722,7 @@ function toast(msg, type='') {
 function openModal(id){
   document.getElementById('modal-'+id).classList.add('open');
   if(id==='addMonster'){ renderMonsterGrid(); }
+  if(id==='addItem'){ setTimeout(renderIconPicker, 50); }
   if(id==='combatantHp'){ setTimeout(()=>document.getElementById('chpModalAmt')?.focus(),100); }
   if(id==='gistSync'){ _fbLoadUI(); }
   if(id==='oracleTest'){ initOracleTestModal(); }
@@ -4933,8 +4932,10 @@ function renderCharacter(){
       { key:'ideals',      label:'Ideals',             placeholder:'What principles and beliefs guide your character?',     icon:'✨' },
       { key:'bonds',       label:'Bonds',              placeholder:'What ties your character to the world?',                icon:'🔗' },
       { key:'flaws',       label:'Flaws',              placeholder:'What weaknesses or vices does your character have?',    icon:'💔' },
+      { key:'background_notes', label:'Background Feature', placeholder:'Your background feature and any background-related abilities, contacts, or perks...', icon:'📖' },
+      { key:'backstory',   label:'Backstory',          placeholder:'Character history, origin, motivation, secrets…',      icon:'📜' },
       { key:'proficiencies', label:'Proficiencies',    placeholder:'Armor, weapons, tools your character is proficient with...', icon:'⚔' },
-      { key:'languages',   label:'Languages',          placeholder:'e.g. Common, Elvish, Dwarvish...',                     icon:'📜' },
+      { key:'languages',   label:'Languages',          placeholder:'e.g. Common, Elvish, Dwarvish...',                     icon:'🗣' },
     ].map(({key, label, placeholder, icon}) => {
       const val = key === 'proficiencies' ? (c.proficiencies || c.otherProf || '') : (c[key] || '');
       const hasVal = val.trim().length > 0;
@@ -4962,8 +4963,28 @@ function renderCharacter(){
   renderConcentrationBanner();
 }
 
+function renderIconPicker() {
+  const picker = document.getElementById('ai-icon-picker');
+  if (!picker) return;
+  const icons = ['⚔','🗡','🪓','🏹','🛡','🧪','🎒','🔧','💎','🔮','💰','📦','🕯','⚗','🌿','🎭','🎵','🏺','📖','📜','👕','💍','⛪','🔒','🧵'];
+  const current = document.getElementById('ai-icon').value || '📦';
+  picker.innerHTML = icons.map(ic => {
+    const active = ic === current;
+    return '<button onclick="selectItemIcon(\'' + ic + '\',this)" style="width:38px;height:38px;font-size:20px;border:1.5px solid ' + (active ? 'var(--gold)' : 'var(--border2)') + ';border-radius:6px;background:' + (active ? 'var(--gold-dim)' : 'var(--surface)') + ';cursor:pointer;transition:all var(--transition);">' + ic + '</button>';
+  }).join('');
+}
+
+function selectItemIcon(ic, btn) {
+  document.getElementById('ai-icon').value = ic;
+  document.querySelectorAll('#ai-icon-picker button').forEach(b => {
+    b.style.background = 'var(--surface)';
+    b.style.borderColor = 'var(--border2)';
+  });
+  btn.style.background = 'var(--gold-dim)';
+  btn.style.borderColor = 'var(--gold)';
+}
+
 function toggleChrSection(key) {
-  const section = document.getElementById('chr-section-' + key);
   const chevron = document.getElementById('chr-chevron-' + key);
   if (!section) return;
   const isOpen = section.style.display !== 'none';
@@ -6642,6 +6663,7 @@ function openAddItemModal(editIdx){
     switchItemType('custom', null);
     const fields=document.getElementById('ai-fields');
     if(fields) fields.style.display='block';
+    setTimeout(renderIconPicker, 60);
   } else {
     switchItemType('weapon', null);
   }
@@ -6653,7 +6675,7 @@ function switchItemType(type, btn){
   selectedLibItem = null;
 
   // Update tab styles
-  ['weapon','armor','potion','gear','tool','magic','custom'].forEach(t=>{
+  ['weapon','ammo','armor','potion','gear','tool','magic','custom'].forEach(t=>{
     const b=document.getElementById(`aitab-${t}`);
     if(!b) return;
     const active=t===type;
@@ -6677,6 +6699,7 @@ function switchItemType(type, btn){
     document.getElementById('ai-weight').value=0;
     document.getElementById('ai-cost').value=0;
     document.getElementById('ai-rarity').value='common';
+    setTimeout(renderIconPicker, 30);
   } else {
     if(libSection) libSection.style.display='flex';
     if(customFields) customFields.style.display='none';
