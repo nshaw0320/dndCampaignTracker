@@ -4985,6 +4985,7 @@ function selectItemIcon(ic, btn) {
 }
 
 function toggleChrSection(key) {
+  const section = document.getElementById('chr-section-' + key);
   const chevron = document.getElementById('chr-chevron-' + key);
   if (!section) return;
   const isOpen = section.style.display !== 'none';
@@ -6652,6 +6653,11 @@ function openAddItemModal(editIdx){
 
   if(editIdx !== undefined){
     const c = getC(); const item = c.items[editIdx];
+    // Switch to custom mode first (this clears fields), then populate
+    switchItemType('custom', null);
+    const fields=document.getElementById('ai-fields');
+    if(fields) fields.style.display='block';
+    // Now set field values after switchItemType reset them
     document.getElementById('ai-name').value = item.name;
     document.getElementById('ai-qty').value = item.qty;
     document.getElementById('ai-desc').value = item.desc||'';
@@ -6659,10 +6665,6 @@ function openAddItemModal(editIdx){
     document.getElementById('ai-cost').value = item.cost||0;
     document.getElementById('ai-rarity').value = item.rarity||'common';
     document.getElementById('ai-icon').value = item.icon||'📦';
-    // Open in custom mode for editing
-    switchItemType('custom', null);
-    const fields=document.getElementById('ai-fields');
-    if(fields) fields.style.display='block';
     setTimeout(renderIconPicker, 60);
   } else {
     switchItemType('weapon', null);
